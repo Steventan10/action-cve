@@ -46,6 +46,9 @@ this implementation and its rebuilt `dist/` bundle.
 Both Telegram inputs must be supplied together. No message is sent when there
 are no matching alerts. Messages use plain text and are split to respect the
 [Telegram sendMessage limit](https://core.telegram.org/bots/api#sendmessage).
+Alerts are grouped by repository, with the repository name shown once above its
+vulnerability total and critical/high/moderate/low counts. Each alert lists severity, package,
+and summary.
 Telegram can be enabled alongside the existing destinations.
 
 ## Attributions

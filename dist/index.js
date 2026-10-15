@@ -322,18 +322,30 @@ const MAX_MESSAGE_LENGTH = 4096;
 const sendAlertsToTelegram = async (botToken, chatId, alerts) => {
     if (alerts.length === 0)
         return;
-    const text = [
-        `Dependabot: ${alerts.length} vulnerability alerts`,
-        ...alerts.map((alert) => [
-            `Repository: ${(0, entities_1.getFullRepositoryNameFromAlert)(alert)}`,
-            `Package: ${alert.packageName}`,
-            `Severity: ${alert.advisory?.severity ?? 'Unknown'}`,
-            `Vulnerable versions: ${alert.vulnerability?.vulnerableVersionRange ?? 'Unknown'}`,
-            `Patched version: ${alert.vulnerability?.firstPatchedVersion ?? 'Not available'}`,
-            `Summary: ${alert.advisory?.summary ?? 'Not available'}`,
-            `Advisory: ${alert.advisory?.url ?? 'Not available'}`,
-        ].join('\n')),
-    ].join('\n\n');
+    const alertsByRepository = new Map();
+    for (const alert of alerts) {
+        const repository = (0, entities_1.getFullRepositoryNameFromAlert)(alert);
+        const repositoryAlerts = alertsByRepository.get(repository) ?? [];
+        repositoryAlerts.push(alert);
+        alertsByRepository.set(repository, repositoryAlerts);
+    }
+    const text = [...alertsByRepository.entries()]
+        .map(([repository, repositoryAlerts]) => {
+        const critical = repositoryAlerts.filter((alert) => alert.advisory?.severity === 'CRITICAL').length;
+        const high = repositoryAlerts.filter((alert) => alert.advisory?.severity === 'HIGH').length;
+        const moderate = repositoryAlerts.filter((alert) => alert.advisory?.severity === 'MEDIUM').length;
+        const low = repositoryAlerts.filter((alert) => alert.advisory?.severity === 'LOW').length;
+        return [
+            `${repository} | Total vulnerability: ${repositoryAlerts.length}`,
+            `Total critical: ${critical} | high: ${high} | moderate: ${moderate} | low: ${low}`,
+            ...repositoryAlerts.map((alert) => [
+                `Severity: ${alert.advisory?.severity ?? 'Unknown'}`,
+                `Package: ${alert.packageName}`,
+                `Summary: ${alert.advisory?.summary ?? 'Not available'}`,
+            ].join('\n')),
+        ].join('\n\n');
+    })
+        .join('\n\n');
     let remaining = text;
     let firstMessage = true;
     while (remaining.length > 0) {

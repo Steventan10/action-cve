@@ -33,10 +33,48 @@ describe('sendAlertsToTelegram', () => {
     expect(request.method).toBe('POST')
     const body = JSON.parse(request.body)
     expect(body.chat_id).toBe('-123')
-    expect(body.text).toContain('org/repo')
-    expect(body.text).toContain('<package_name>')
-    expect(body.text).toContain('Patched version: Not available')
+    expect(body.text).toBe(
+      'org/repo | Total vulnerability: 1\n\n' +
+        'Total critical: 0 | high: 0 | moderate: 0 | low: 0\n\n' +
+        'Severity: Unknown\nPackage: <package_name>\nSummary: Not available',
+    )
     expect(body.parse_mode).toBeUndefined()
+  })
+
+  it('groups alerts by repository and counts each severity per repository', async () => {
+    const withSeverity = (
+      severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW',
+    ): Alert => ({
+      ...alert,
+      advisory: {
+        severity,
+        summary: 'Example summary',
+        cvssScore: 0,
+        description: '',
+        url: '',
+        publishedAt: '',
+        updatedAt: '',
+      },
+    })
+    await sendAlertsToTelegram('test-token', '123', [
+      withSeverity('CRITICAL'),
+      { ...withSeverity('HIGH'), repository: { owner: 'org', name: 'other' } },
+      withSeverity('HIGH'),
+      withSeverity('LOW'),
+      withSeverity('MEDIUM'),
+    ])
+    const { text } = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(text.match(/org\/repo/g)).toHaveLength(1)
+    expect(text.match(/org\/other/g)).toHaveLength(1)
+    expect(text).toContain(
+      'org/repo | Total vulnerability: 4\n\nTotal critical: 1 | high: 1 | moderate: 1 | low: 1',
+    )
+    expect(text).toContain(
+      'org/other | Total vulnerability: 1\n\nTotal critical: 0 | high: 1 | moderate: 0 | low: 0',
+    )
+    expect(text).toContain(
+      'Severity: CRITICAL\nPackage: <package_name>\nSummary: Example summary',
+    )
   })
 
   it('splits long Unicode messages without losing text or breaking characters', async () => {
