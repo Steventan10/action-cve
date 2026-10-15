@@ -1,4 +1,5 @@
 export * from './slack'
+export * from './telegram'
 export * from './pager-duty'
 export * from './zenduty'
 export * from './microsoft-teams'

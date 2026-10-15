@@ -1,10 +1,11 @@
-import { getInput, setFailed } from '@actions/core'
+import { getInput, setFailed, setSecret } from '@actions/core'
 import { context } from '@actions/github'
 
 import {
   sendAlertsToMicrosoftTeams,
   sendAlertsToPagerDuty,
   sendAlertsToSlack,
+  sendAlertsToTelegram,
   sendAlertsToZenduty,
   sendAlertsToZendutyViaIntegration,
   sendAlertsToEmailSes,
@@ -26,6 +27,12 @@ async function run(): Promise<void> {
     const enterprise = getInput('enterprise')
     const microsoftTeamsWebhookUrl = getInput('microsoft_teams_webhook')
     const slackWebhookUrl = getInput('slack_webhook')
+    const telegramBotToken = getInput('telegram_bot_token')
+    const telegramChatId = getInput('telegram_chat_id')
+    if (telegramBotToken) setSecret(telegramBotToken)
+    if (Boolean(telegramBotToken) !== Boolean(telegramChatId)) {
+      throw new Error('Set both telegram_bot_token and telegram_chat_id')
+    }
     const pagerDutyIntegrationKey = getInput('pager_duty_integration_key')
     const zenDutyIntegrationKey = getInput('zenduty_integration_key')
     const zenDutyApiKey = getInput('zenduty_api_key')
@@ -74,6 +81,9 @@ async function run(): Promise<void> {
     }
     alerts = filterIgnoredAlerts(alerts, ignoreList)
     if (alerts.length > 0) {
+      if (telegramBotToken && telegramChatId) {
+        await sendAlertsToTelegram(telegramBotToken, telegramChatId, alerts)
+      }
       if (microsoftTeamsWebhookUrl) {
         await sendAlertsToMicrosoftTeams(microsoftTeamsWebhookUrl, alerts)
       }

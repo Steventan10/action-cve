@@ -115,6 +115,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 __exportStar(__nccwpck_require__(15132), exports);
+__exportStar(__nccwpck_require__(67241), exports);
 __exportStar(__nccwpck_require__(24884), exports);
 __exportStar(__nccwpck_require__(25873), exports);
 __exportStar(__nccwpck_require__(31531), exports);
@@ -305,6 +306,78 @@ const sendAlertsToSlack = async (webhookUrl, alerts) => {
 };
 exports.sendAlertsToSlack = sendAlertsToSlack;
 //# sourceMappingURL=slack.js.map
+
+/***/ }),
+
+/***/ 67241:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.sendAlertsToTelegram = void 0;
+const promises_1 = __nccwpck_require__(58500);
+const entities_1 = __nccwpck_require__(30314);
+const MAX_MESSAGE_LENGTH = 4096;
+const sendAlertsToTelegram = async (botToken, chatId, alerts) => {
+    if (alerts.length === 0)
+        return;
+    const text = [
+        `Dependabot: ${alerts.length} vulnerability alerts`,
+        ...alerts.map((alert) => [
+            `Repository: ${(0, entities_1.getFullRepositoryNameFromAlert)(alert)}`,
+            `Package: ${alert.packageName}`,
+            `Severity: ${alert.advisory?.severity ?? 'Unknown'}`,
+            `Vulnerable versions: ${alert.vulnerability?.vulnerableVersionRange ?? 'Unknown'}`,
+            `Patched version: ${alert.vulnerability?.firstPatchedVersion ?? 'Not available'}`,
+            `Summary: ${alert.advisory?.summary ?? 'Not available'}`,
+            `Advisory: ${alert.advisory?.url ?? 'Not available'}`,
+        ].join('\n')),
+    ].join('\n\n');
+    let remaining = text;
+    let firstMessage = true;
+    while (remaining.length > 0) {
+        // Stay within Telegram's limit without splitting a UTF-16 surrogate pair.
+        let end = Math.min(MAX_MESSAGE_LENGTH, remaining.length);
+        if (end < remaining.length) {
+            const last = remaining.charCodeAt(end - 1);
+            if (last >= 0xd800 && last <= 0xdbff)
+                end--;
+        }
+        const message = remaining.slice(0, end);
+        remaining = remaining.slice(end);
+        // Space requests to the same chat, including group chats.
+        if (!firstMessage)
+            await (0, promises_1.setTimeout)(3100);
+        firstMessage = false;
+        let response;
+        try {
+            response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: message,
+                    link_preview_options: { is_disabled: true },
+                }),
+                signal: AbortSignal.timeout(30000),
+            });
+        }
+        catch {
+            // Network errors may contain the request URL, which includes the token.
+            throw new Error('Telegram request failed or timed out');
+        }
+        if (!response.ok) {
+            throw new Error(`Telegram request failed (HTTP ${response.status})`);
+        }
+        const result = (await response.json());
+        if (result.ok !== true) {
+            throw new Error('Telegram API rejected the message');
+        }
+    }
+};
+exports.sendAlertsToTelegram = sendAlertsToTelegram;
+//# sourceMappingURL=telegram.js.map
 
 /***/ }),
 
@@ -124202,6 +124275,14 @@ module.exports = require("node:stream");
 
 /***/ }),
 
+/***/ 58500:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("node:timers/promises");
+
+/***/ }),
+
 /***/ 57975:
 /***/ ((module) => {
 
@@ -131874,6 +131955,13 @@ async function run() {
         const enterprise = (0, core_1.getInput)('enterprise');
         const microsoftTeamsWebhookUrl = (0, core_1.getInput)('microsoft_teams_webhook');
         const slackWebhookUrl = (0, core_1.getInput)('slack_webhook');
+        const telegramBotToken = (0, core_1.getInput)('telegram_bot_token');
+        const telegramChatId = (0, core_1.getInput)('telegram_chat_id');
+        if (telegramBotToken)
+            (0, core_1.setSecret)(telegramBotToken);
+        if (Boolean(telegramBotToken) !== Boolean(telegramChatId)) {
+            throw new Error('Set both telegram_bot_token and telegram_chat_id');
+        }
         const pagerDutyIntegrationKey = (0, core_1.getInput)('pager_duty_integration_key');
         const zenDutyIntegrationKey = (0, core_1.getInput)('zenduty_integration_key');
         const zenDutyApiKey = (0, core_1.getInput)('zenduty_api_key');
@@ -131907,6 +131995,9 @@ async function run() {
         }
         alerts = (0, fetch_alerts_1.filterIgnoredAlerts)(alerts, ignoreList);
         if (alerts.length > 0) {
+            if (telegramBotToken && telegramChatId) {
+                await (0, destinations_1.sendAlertsToTelegram)(telegramBotToken, telegramChatId, alerts);
+            }
             if (microsoftTeamsWebhookUrl) {
                 await (0, destinations_1.sendAlertsToMicrosoftTeams)(microsoftTeamsWebhookUrl, alerts);
             }
