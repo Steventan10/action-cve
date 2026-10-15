@@ -47,8 +47,11 @@ Both Telegram inputs must be supplied together. No message is sent when there
 are no matching alerts. Messages use plain text and are split to respect the
 [Telegram sendMessage limit](https://core.telegram.org/bots/api#sendmessage).
 Alerts are grouped by repository, with the repository name shown once above its
-vulnerability total and critical/high/moderate/low counts. Each alert lists severity, package,
-and summary.
+vulnerability total and critical/high/moderate/low counts. When `severity` is set,
+only the selected severity counts are shown (including zero counts). For example,
+`severity: high,critical` shows only Critical and High; `medium` is displayed as
+Moderate. Without a severity filter, all four counts are shown. Totals reflect
+the alerts included in the message. Each alert lists severity, package, and summary.
 Telegram can be enabled alongside the existing destinations.
 
 ## Attributions

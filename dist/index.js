@@ -319,7 +319,7 @@ exports.sendAlertsToTelegram = void 0;
 const promises_1 = __nccwpck_require__(58500);
 const entities_1 = __nccwpck_require__(30314);
 const MAX_MESSAGE_LENGTH = 4096;
-const sendAlertsToTelegram = async (botToken, chatId, alerts) => {
+const sendAlertsToTelegram = async (botToken, chatId, alerts, severity = '') => {
     if (alerts.length === 0)
         return;
     const alertsByRepository = new Map();
@@ -329,15 +329,30 @@ const sendAlertsToTelegram = async (botToken, chatId, alerts) => {
         repositoryAlerts.push(alert);
         alertsByRepository.set(repository, repositoryAlerts);
     }
+    const selectedSeverities = severity
+        .split(',')
+        .map((value) => value.trim().toUpperCase())
+        .filter(Boolean);
+    const severityLabels = [
+        ['CRITICAL', 'Critical'],
+        ['HIGH', 'High'],
+        ['MEDIUM', 'Moderate'],
+        ['LOW', 'Low'],
+    ];
     const text = [...alertsByRepository.entries()]
         .map(([repository, repositoryAlerts]) => {
-        const critical = repositoryAlerts.filter((alert) => alert.advisory?.severity === 'CRITICAL').length;
-        const high = repositoryAlerts.filter((alert) => alert.advisory?.severity === 'HIGH').length;
-        const moderate = repositoryAlerts.filter((alert) => alert.advisory?.severity === 'MEDIUM').length;
-        const low = repositoryAlerts.filter((alert) => alert.advisory?.severity === 'LOW').length;
+        const counts = severityLabels
+            .filter(([value]) => selectedSeverities.length === 0 ||
+            selectedSeverities.includes(value))
+            .map(([value, label]) => {
+            const count = repositoryAlerts.filter((alert) => alert.advisory?.severity === value).length;
+            return `${label}: ${count}`;
+        })
+            .join(' | ');
         return [
-            `${repository} | Total vulnerability: ${repositoryAlerts.length}`,
-            `Total critical: ${critical} | high: ${high} | moderate: ${moderate} | low: ${low}`,
+            '🚨Dependabot Vulnerabilities🚨',
+            `Project: ${repository}`,
+            `Total vulnerability: ${repositoryAlerts.length}\n${counts}`,
             ...repositoryAlerts.map((alert) => [
                 `Severity: ${alert.advisory?.severity ?? 'Unknown'}`,
                 `Package: ${alert.packageName}`,
@@ -132008,7 +132023,7 @@ async function run() {
         alerts = (0, fetch_alerts_1.filterIgnoredAlerts)(alerts, ignoreList);
         if (alerts.length > 0) {
             if (telegramBotToken && telegramChatId) {
-                await (0, destinations_1.sendAlertsToTelegram)(telegramBotToken, telegramChatId, alerts);
+                await (0, destinations_1.sendAlertsToTelegram)(telegramBotToken, telegramChatId, alerts, severity);
             }
             if (microsoftTeamsWebhookUrl) {
                 await (0, destinations_1.sendAlertsToMicrosoftTeams)(microsoftTeamsWebhookUrl, alerts);

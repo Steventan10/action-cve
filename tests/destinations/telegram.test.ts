@@ -34,8 +34,8 @@ describe('sendAlertsToTelegram', () => {
     const body = JSON.parse(request.body)
     expect(body.chat_id).toBe('-123')
     expect(body.text).toBe(
-      'org/repo | Total vulnerability: 1\n\n' +
-        'Total critical: 0 | high: 0 | moderate: 0 | low: 0\n\n' +
+      '🚨Dependabot Vulnerabilities🚨\n\nProject: org/repo\n\nTotal vulnerability: 1\n' +
+        'Critical: 0 | High: 0 | Moderate: 0 | Low: 0\n\n' +
         'Severity: Unknown\nPackage: <package_name>\nSummary: Not available',
     )
     expect(body.parse_mode).toBeUndefined()
@@ -67,15 +67,33 @@ describe('sendAlertsToTelegram', () => {
     expect(text.match(/org\/repo/g)).toHaveLength(1)
     expect(text.match(/org\/other/g)).toHaveLength(1)
     expect(text).toContain(
-      'org/repo | Total vulnerability: 4\n\nTotal critical: 1 | high: 1 | moderate: 1 | low: 1',
+      'Project: org/repo\n\nTotal vulnerability: 4\nCritical: 1 | High: 1 | Moderate: 1 | Low: 1',
     )
     expect(text).toContain(
-      'org/other | Total vulnerability: 1\n\nTotal critical: 0 | high: 1 | moderate: 0 | low: 0',
+      'Project: org/other\n\nTotal vulnerability: 1\nCritical: 0 | High: 1 | Moderate: 0 | Low: 0',
     )
     expect(text).toContain(
       'Severity: CRITICAL\nPackage: <package_name>\nSummary: Example summary',
     )
   })
+
+  it.each([
+    ['high,critical', 'Critical: 0 | High: 0'],
+    ['medium', 'Moderate: 0'],
+    ['low', 'Low: 0'],
+    [' HIGH , critical ', 'Critical: 0 | High: 0'],
+  ])(
+    'shows only the configured severity counts for %s',
+    async (severity, counts) => {
+      await sendAlertsToTelegram('test-token', '123', [alert], severity)
+      const { text } = JSON.parse(fetchMock.mock.calls[0][1].body)
+      expect(text).toBe(
+        '🚨Dependabot Vulnerabilities🚨\n\nProject: org/repo\n\n' +
+          `Total vulnerability: 1\n${counts}\n\n` +
+          'Severity: Unknown\nPackage: <package_name>\nSummary: Not available',
+      )
+    },
+  )
 
   it('splits long Unicode messages without losing text or breaking characters', async () => {
     const packageName = '😀'.repeat(5000)

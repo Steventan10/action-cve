@@ -8,6 +8,7 @@ export const sendAlertsToTelegram = async (
   botToken: string,
   chatId: string,
   alerts: Alert[],
+  severity = '',
 ): Promise<void> => {
   if (alerts.length === 0) return
 
@@ -19,25 +20,37 @@ export const sendAlertsToTelegram = async (
     alertsByRepository.set(repository, repositoryAlerts)
   }
 
+  const selectedSeverities = severity
+    .split(',')
+    .map((value) => value.trim().toUpperCase())
+    .filter(Boolean)
+  const severityLabels = [
+    ['CRITICAL', 'Critical'],
+    ['HIGH', 'High'],
+    ['MEDIUM', 'Moderate'],
+    ['LOW', 'Low'],
+  ]
+
   const text = [...alertsByRepository.entries()]
     .map(([repository, repositoryAlerts]) => {
-      const critical = repositoryAlerts.filter(
-        (alert) => alert.advisory?.severity === 'CRITICAL',
-      ).length
-      const high = repositoryAlerts.filter(
-        (alert) => alert.advisory?.severity === 'HIGH',
-      ).length
-
-      const moderate = repositoryAlerts.filter(
-        (alert) => alert.advisory?.severity === 'MEDIUM',
-      ).length
-      const low = repositoryAlerts.filter(
-        (alert) => alert.advisory?.severity === 'LOW',
-      ).length
+      const counts = severityLabels
+        .filter(
+          ([value]) =>
+            selectedSeverities.length === 0 ||
+            selectedSeverities.includes(value),
+        )
+        .map(([value, label]) => {
+          const count = repositoryAlerts.filter(
+            (alert) => alert.advisory?.severity === value,
+          ).length
+          return `${label}: ${count}`
+        })
+        .join(' | ')
 
       return [
-        `${repository} | Total vulnerability: ${repositoryAlerts.length}`,
-        `Total critical: ${critical} | high: ${high} | moderate: ${moderate} | low: ${low}`,
+        '🚨Dependabot Vulnerabilities🚨',
+        `Project: ${repository}`,
+        `Total vulnerability: ${repositoryAlerts.length}\n${counts}`,
         ...repositoryAlerts.map((alert) =>
           [
             `Severity: ${alert.advisory?.severity ?? 'Unknown'}`,
