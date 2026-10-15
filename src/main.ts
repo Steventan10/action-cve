@@ -29,9 +29,27 @@ async function run(): Promise<void> {
     const slackWebhookUrl = getInput('slack_webhook')
     const telegramBotToken = getInput('telegram_bot_token')
     const telegramChatId = getInput('telegram_chat_id')
+    const telegramTopicIdInput = getInput('telegram_topic_id')
+    const telegramTopicId = telegramTopicIdInput
+      ? Number(telegramTopicIdInput)
+      : undefined
     if (telegramBotToken) setSecret(telegramBotToken)
     if (Boolean(telegramBotToken) !== Boolean(telegramChatId)) {
       throw new Error('Set both telegram_bot_token and telegram_chat_id')
+    }
+    if (telegramTopicIdInput) {
+      if (!telegramBotToken || !telegramChatId) {
+        throw new Error(
+          'telegram_topic_id requires telegram_bot_token and telegram_chat_id',
+        )
+      }
+      if (
+        !/^\d+$/.test(telegramTopicIdInput) ||
+        !Number.isSafeInteger(telegramTopicId) ||
+        Number(telegramTopicId) <= 0
+      ) {
+        throw new Error('telegram_topic_id must be a positive integer')
+      }
     }
     const pagerDutyIntegrationKey = getInput('pager_duty_integration_key')
     const zenDutyIntegrationKey = getInput('zenduty_integration_key')
@@ -42,8 +60,12 @@ async function run(): Promise<void> {
     const emailList = getInput('email_list')
     const emailSubject = getInput('email_subject')
     const emailTransportSesRegion = getInput('email_transport_ses_region')
-    const emailTransportSesAccessKeyId = getInput('email_transport_ses_access_key_id')
-    const emailTransportSesSecretAccessKey = getInput('email_transport_ses_secret_access_key')
+    const emailTransportSesAccessKeyId = getInput(
+      'email_transport_ses_access_key_id',
+    )
+    const emailTransportSesSecretAccessKey = getInput(
+      'email_transport_ses_secret_access_key',
+    )
     const emailTransportSmtpHost = getInput('email_transport_smtp_host')
     const emailTransportSmtpPort = parseInt(
       getInput('email_transport_smtp_port'),
@@ -82,7 +104,13 @@ async function run(): Promise<void> {
     alerts = filterIgnoredAlerts(alerts, ignoreList)
     if (alerts.length > 0) {
       if (telegramBotToken && telegramChatId) {
-        await sendAlertsToTelegram(telegramBotToken, telegramChatId, alerts, severity)
+        await sendAlertsToTelegram(
+          telegramBotToken,
+          telegramChatId,
+          alerts,
+          severity,
+          telegramTopicId,
+        )
       }
       if (microsoftTeamsWebhookUrl) {
         await sendAlertsToMicrosoftTeams(microsoftTeamsWebhookUrl, alerts)
@@ -116,7 +144,11 @@ async function run(): Promise<void> {
       if (emailFrom && emailList) {
         const emailWikiLink =
           'https://github.com/kunalnagarco/action-cve/wiki/Send-alerts-to-email'
-        if (emailTransportSesRegion && emailTransportSesAccessKeyId && emailTransportSesSecretAccessKey) {
+        if (
+          emailTransportSesRegion &&
+          emailTransportSesAccessKeyId &&
+          emailTransportSesSecretAccessKey
+        ) {
           await sendAlertsToEmailSes(
             emailTransportSesRegion,
             emailTransportSesAccessKeyId,

@@ -16,6 +16,8 @@ inputs:
     description: 'Telegram bot token from BotFather. Required together with telegram_chat_id.'
   telegram_chat_id:
     description: 'Telegram destination chat ID or channel username (e.g. @mychannel). Required together with telegram_bot_token.'
+  telegram_topic_id:
+    description: 'Optional Telegram forum topic ID (message_thread_id), a positive integer. Requires telegram_bot_token and telegram_chat_id.'
   pager_duty_integration_key:
     description: 'Pager Duty Integration Key. More info: https://support.pagerduty.com/docs/services-and-integrations'
   zenduty_integration_key:

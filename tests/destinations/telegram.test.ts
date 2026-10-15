@@ -33,6 +33,7 @@ describe('sendAlertsToTelegram', () => {
     expect(request.method).toBe('POST')
     const body = JSON.parse(request.body)
     expect(body.chat_id).toBe('-123')
+    expect(body).not.toHaveProperty('message_thread_id')
     expect(body.text).toBe(
       '🚨Dependabot Vulnerabilities🚨\n\nProject: org/repo\n\nTotal vulnerability: 1\n' +
         'Critical: 0 | High: 0 | Moderate: 0 | Low: 0\n\n' +
@@ -105,6 +106,23 @@ describe('sendAlertsToTelegram', () => {
     expect(texts.every((text) => text.length <= 4096)).toBe(true)
     expect(texts.every((text) => !/[\uD800-\uDBFF]$/.test(text))).toBe(true)
     expect(texts.join('')).toContain(packageName)
+  })
+
+  it('sends every message chunk to the requested topic', async () => {
+    await sendAlertsToTelegram(
+      'test-token',
+      '-123',
+      [{ ...alert, packageName: 'a'.repeat(9000) }],
+      '',
+      42,
+    )
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1)
+    for (const [, request] of fetchMock.mock.calls) {
+      expect(JSON.parse(request.body)).toMatchObject({
+        chat_id: '-123',
+        message_thread_id: 42,
+      })
+    }
   })
 
   it('reports HTTP failure', async () => {

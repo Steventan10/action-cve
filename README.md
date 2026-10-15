@@ -31,19 +31,27 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./
         with:
-          token: ${{ secrets.DEPENDABOT_TOKEN }}
+          token: ${{ secrets.GIT_TOKEN }}
           telegram_bot_token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           telegram_chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          telegram_topic_id: ${{ secrets.TELEGRAM_TOPIC_ID }} # Optional
           severity: high,critical
           count: '20'
 ```
 
-`DEPENDABOT_TOKEN` must have access to read Dependabot alerts for the target
+`GIT_TOKEN` must have access to read Dependabot alerts for the target
 repository. To use this action from another repository, replace `uses: ./`
 with `uses: YOUR_OWNER/YOUR_ACTION_REPO@YOUR_REF` pointing to a commit containing
 this implementation and its rebuilt `dist/` bundle.
 
-Both Telegram inputs must be supplied together. No message is sent when there
+For a specific forum topic, set `telegram_topic_id` to its positive numeric
+topic ID (Telegram's `message_thread_id`), and keep `telegram_chat_id` set to
+the group's chat ID. You can use a secret as above or a literal such as
+`telegram_topic_id: '123'`. Omit it or leave it empty for chats without a topic.
+Every part of a split message is sent to the same topic.
+
+`telegram_bot_token` and `telegram_chat_id` must be supplied together.
+`telegram_topic_id` is optional and requires both. No message is sent when there
 are no matching alerts. Messages use plain text and are split to respect the
 [Telegram sendMessage limit](https://core.telegram.org/bots/api#sendmessage).
 Alerts are grouped by repository, with the repository name shown once above its

@@ -9,6 +9,7 @@ export const sendAlertsToTelegram = async (
   chatId: string,
   alerts: Alert[],
   severity = '',
+  topicId?: number,
 ): Promise<void> => {
   if (alerts.length === 0) return
 
@@ -86,6 +87,7 @@ export const sendAlertsToTelegram = async (
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
+            message_thread_id: topicId,
             text: message,
             link_preview_options: { is_disabled: true },
           }),

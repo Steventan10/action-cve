@@ -319,7 +319,7 @@ exports.sendAlertsToTelegram = void 0;
 const promises_1 = __nccwpck_require__(58500);
 const entities_1 = __nccwpck_require__(30314);
 const MAX_MESSAGE_LENGTH = 4096;
-const sendAlertsToTelegram = async (botToken, chatId, alerts, severity = '') => {
+const sendAlertsToTelegram = async (botToken, chatId, alerts, severity = '', topicId) => {
     if (alerts.length === 0)
         return;
     const alertsByRepository = new Map();
@@ -384,6 +384,7 @@ const sendAlertsToTelegram = async (botToken, chatId, alerts, severity = '') => 
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     chat_id: chatId,
+                    message_thread_id: topicId,
                     text: message,
                     link_preview_options: { is_disabled: true },
                 }),
@@ -131984,10 +131985,24 @@ async function run() {
         const slackWebhookUrl = (0, core_1.getInput)('slack_webhook');
         const telegramBotToken = (0, core_1.getInput)('telegram_bot_token');
         const telegramChatId = (0, core_1.getInput)('telegram_chat_id');
+        const telegramTopicIdInput = (0, core_1.getInput)('telegram_topic_id');
+        const telegramTopicId = telegramTopicIdInput
+            ? Number(telegramTopicIdInput)
+            : undefined;
         if (telegramBotToken)
             (0, core_1.setSecret)(telegramBotToken);
         if (Boolean(telegramBotToken) !== Boolean(telegramChatId)) {
             throw new Error('Set both telegram_bot_token and telegram_chat_id');
+        }
+        if (telegramTopicIdInput) {
+            if (!telegramBotToken || !telegramChatId) {
+                throw new Error('telegram_topic_id requires telegram_bot_token and telegram_chat_id');
+            }
+            if (!/^\d+$/.test(telegramTopicIdInput) ||
+                !Number.isSafeInteger(telegramTopicId) ||
+                Number(telegramTopicId) <= 0) {
+                throw new Error('telegram_topic_id must be a positive integer');
+            }
         }
         const pagerDutyIntegrationKey = (0, core_1.getInput)('pager_duty_integration_key');
         const zenDutyIntegrationKey = (0, core_1.getInput)('zenduty_integration_key');
@@ -132023,7 +132038,7 @@ async function run() {
         alerts = (0, fetch_alerts_1.filterIgnoredAlerts)(alerts, ignoreList);
         if (alerts.length > 0) {
             if (telegramBotToken && telegramChatId) {
-                await (0, destinations_1.sendAlertsToTelegram)(telegramBotToken, telegramChatId, alerts, severity);
+                await (0, destinations_1.sendAlertsToTelegram)(telegramBotToken, telegramChatId, alerts, severity, telegramTopicId);
             }
             if (microsoftTeamsWebhookUrl) {
                 await (0, destinations_1.sendAlertsToMicrosoftTeams)(microsoftTeamsWebhookUrl, alerts);
@@ -132052,7 +132067,9 @@ async function run() {
             }
             if (emailFrom && emailList) {
                 const emailWikiLink = 'https://github.com/kunalnagarco/action-cve/wiki/Send-alerts-to-email';
-                if (emailTransportSesRegion && emailTransportSesAccessKeyId && emailTransportSesSecretAccessKey) {
+                if (emailTransportSesRegion &&
+                    emailTransportSesAccessKeyId &&
+                    emailTransportSesSecretAccessKey) {
                     await (0, destinations_1.sendAlertsToEmailSes)(emailTransportSesRegion, emailTransportSesAccessKeyId, emailTransportSesSecretAccessKey, alerts, emailList, emailFrom, emailSubject);
                 }
                 else if (emailTransportSmtpUser && emailTransportSmtpPassword) {
