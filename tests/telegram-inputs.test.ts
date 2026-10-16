@@ -45,6 +45,7 @@ describe('Telegram action inputs', () => {
           [{ packageName: 'example' }],
           '',
           topicId ? 42 : undefined,
+          'org/repo',
         ),
       )
       expect(mocks.setFailed).not.toHaveBeenCalled()
@@ -63,6 +64,7 @@ describe('Telegram action inputs', () => {
         [],
         'critical',
         42,
+        'org/repo',
       ),
     )
     expect(mocks.setFailed).not.toHaveBeenCalled()

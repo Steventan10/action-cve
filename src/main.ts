@@ -109,6 +109,7 @@ async function run(): Promise<void> {
         alerts,
         severity,
         telegramTopicId,
+        `${context.repo.owner}/${context.repo.repo}`,
       )
     }
     if (alerts.length > 0) {

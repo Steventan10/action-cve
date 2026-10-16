@@ -319,7 +319,7 @@ exports.sendAlertsToTelegram = void 0;
 const promises_1 = __nccwpck_require__(58500);
 const entities_1 = __nccwpck_require__(30314);
 const MAX_MESSAGE_LENGTH = 4096;
-const sendAlertsToTelegram = async (botToken, chatId, alerts, severity = '', topicId) => {
+const sendAlertsToTelegram = async (botToken, chatId, alerts, severity = '', topicId, repository = 'Unknown') => {
     const alertsByRepository = new Map();
     for (const alert of alerts) {
         const repository = (0, entities_1.getFullRepositoryNameFromAlert)(alert);
@@ -362,9 +362,10 @@ const sendAlertsToTelegram = async (botToken, chatId, alerts, severity = '', top
     let remaining = text ||
         [
             '✅ Dependabot Vulnerabilities',
+            `Project: ${repository}`,
             `Severity: ${selectedSeverities.join(', ') || 'ALL'}`,
             'Total vulnerability: 0',
-            'No vulnerabilities found matching the configured filters (after exclusions).',
+            'No vulnerabilities found matching the configured filters.',
         ].join('\n\n');
     let firstMessage = true;
     while (remaining.length > 0) {
@@ -132041,7 +132042,7 @@ async function run() {
         }
         alerts = (0, fetch_alerts_1.filterIgnoredAlerts)(alerts, ignoreList);
         if (telegramBotToken && telegramChatId) {
-            await (0, destinations_1.sendAlertsToTelegram)(telegramBotToken, telegramChatId, alerts, severity, telegramTopicId);
+            await (0, destinations_1.sendAlertsToTelegram)(telegramBotToken, telegramChatId, alerts, severity, telegramTopicId, `${github_1.context.repo.owner}/${github_1.context.repo.repo}`);
         }
         if (alerts.length > 0) {
             if (microsoftTeamsWebhookUrl) {

@@ -10,6 +10,7 @@ export const sendAlertsToTelegram = async (
   alerts: Alert[],
   severity = '',
   topicId?: number,
+  repository = 'Unknown',
 ): Promise<void> => {
   const alertsByRepository = new Map<string, Alert[]>()
   for (const alert of alerts) {
@@ -65,9 +66,10 @@ export const sendAlertsToTelegram = async (
     text ||
     [
       '✅ Dependabot Vulnerabilities',
+      `Project: ${repository}`,
       `Severity: ${selectedSeverities.join(', ') || 'ALL'}`,
       'Total vulnerability: 0',
-      'No vulnerabilities found matching the configured filters (after exclusions).',
+      'No vulnerabilities found matching the configured filters.',
     ].join('\n\n')
   let firstMessage = true
   while (remaining.length > 0) {
