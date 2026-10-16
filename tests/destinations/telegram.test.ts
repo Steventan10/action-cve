@@ -21,10 +21,25 @@ describe('sendAlertsToTelegram', () => {
 
   afterEach(() => vi.unstubAllGlobals())
 
-  it('does not send empty alerts', async () => {
-    await sendAlertsToTelegram('test-token', '123', [])
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
+  it.each([
+    ['', 'ALL'],
+    ['critical', 'CRITICAL'],
+    [' high, critical ', 'HIGH, CRITICAL'],
+  ])(
+    'sends a zero-result notification for severity %s',
+    async (severity, label) => {
+      await sendAlertsToTelegram('test-token', '123', [], severity, 42)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+        chat_id: '123',
+        message_thread_id: 42,
+        text:
+          '✅ Dependabot Vulnerabilities\n\n' +
+          `Severity: ${label}\n\nTotal vulnerability: 0\n\n` +
+          'No vulnerabilities found matching the configured filters.',
+      })
+    },
+  )
 
   it('sends plain text with the destination and repository details', async () => {
     await sendAlertsToTelegram('test-token', '-123', [alert])
@@ -36,8 +51,8 @@ describe('sendAlertsToTelegram', () => {
     expect(body).not.toHaveProperty('message_thread_id')
     expect(body.text).toBe(
       '🚨Dependabot Vulnerabilities🚨\n\nProject: org/repo\n\nTotal vulnerability: 1\n' +
-        'Critical: 0 | High: 0 | Moderate: 0 | Low: 0\n\n' +
-        'Severity: Unknown\nPackage: <package_name>\nSummary: Not available',
+      'Critical: 0 | High: 0 | Moderate: 0 | Low: 0\n\n' +
+      'Severity: Unknown\nPackage: <package_name>\nSummary: Not available',
     )
     expect(body.parse_mode).toBeUndefined()
   })
@@ -90,8 +105,8 @@ describe('sendAlertsToTelegram', () => {
       const { text } = JSON.parse(fetchMock.mock.calls[0][1].body)
       expect(text).toBe(
         '🚨Dependabot Vulnerabilities🚨\n\nProject: org/repo\n\n' +
-          `Total vulnerability: 1\n${counts}\n\n` +
-          'Severity: Unknown\nPackage: <package_name>\nSummary: Not available',
+        `Total vulnerability: 1\n${counts}\n\n` +
+        'Severity: Unknown\nPackage: <package_name>\nSummary: Not available',
       )
     },
   )

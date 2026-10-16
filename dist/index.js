@@ -320,8 +320,6 @@ const promises_1 = __nccwpck_require__(58500);
 const entities_1 = __nccwpck_require__(30314);
 const MAX_MESSAGE_LENGTH = 4096;
 const sendAlertsToTelegram = async (botToken, chatId, alerts, severity = '', topicId) => {
-    if (alerts.length === 0)
-        return;
     const alertsByRepository = new Map();
     for (const alert of alerts) {
         const repository = (0, entities_1.getFullRepositoryNameFromAlert)(alert);
@@ -361,7 +359,13 @@ const sendAlertsToTelegram = async (botToken, chatId, alerts, severity = '', top
         ].join('\n\n');
     })
         .join('\n\n');
-    let remaining = text;
+    let remaining = text ||
+        [
+            '✅ Dependabot Vulnerabilities',
+            `Severity: ${selectedSeverities.join(', ') || 'ALL'}`,
+            'Total vulnerability: 0',
+            'No vulnerabilities found matching the configured filters (after exclusions).',
+        ].join('\n\n');
     let firstMessage = true;
     while (remaining.length > 0) {
         // Stay within Telegram's limit without splitting a UTF-16 surrogate pair.
@@ -132036,10 +132040,10 @@ async function run() {
             alerts = await (0, fetch_alerts_1.fetchRepositoryAlerts)(token, repo, owner, severity, ecosystem, count);
         }
         alerts = (0, fetch_alerts_1.filterIgnoredAlerts)(alerts, ignoreList);
+        if (telegramBotToken && telegramChatId) {
+            await (0, destinations_1.sendAlertsToTelegram)(telegramBotToken, telegramChatId, alerts, severity, telegramTopicId);
+        }
         if (alerts.length > 0) {
-            if (telegramBotToken && telegramChatId) {
-                await (0, destinations_1.sendAlertsToTelegram)(telegramBotToken, telegramChatId, alerts, severity, telegramTopicId);
-            }
             if (microsoftTeamsWebhookUrl) {
                 await (0, destinations_1.sendAlertsToMicrosoftTeams)(microsoftTeamsWebhookUrl, alerts);
             }

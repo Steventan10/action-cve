@@ -11,8 +11,6 @@ export const sendAlertsToTelegram = async (
   severity = '',
   topicId?: number,
 ): Promise<void> => {
-  if (alerts.length === 0) return
-
   const alertsByRepository = new Map<string, Alert[]>()
   for (const alert of alerts) {
     const repository = getFullRepositoryNameFromAlert(alert)
@@ -63,7 +61,14 @@ export const sendAlertsToTelegram = async (
     })
     .join('\n\n')
 
-  let remaining = text
+  let remaining =
+    text ||
+    [
+      '✅ Dependabot Vulnerabilities',
+      `Severity: ${selectedSeverities.join(', ') || 'ALL'}`,
+      'Total vulnerability: 0',
+      'No vulnerabilities found matching the configured filters (after exclusions).',
+    ].join('\n\n')
   let firstMessage = true
   while (remaining.length > 0) {
     // Stay within Telegram's limit without splitting a UTF-16 surrogate pair.

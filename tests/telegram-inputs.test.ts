@@ -51,6 +51,23 @@ describe('Telegram action inputs', () => {
     },
   )
 
+  it('sends to Telegram when no alerts match the selected severity', async () => {
+    mocks.inputs.severity = 'critical'
+    mocks.inputs.telegram_topic_id = '42'
+    mocks.fetchRepositoryAlerts.mockResolvedValue([])
+    await import('../src/main')
+    await vi.waitFor(() =>
+      expect(mocks.sendAlertsToTelegram).toHaveBeenCalledWith(
+        'test-token',
+        '-123',
+        [],
+        'critical',
+        42,
+      ),
+    )
+    expect(mocks.setFailed).not.toHaveBeenCalled()
+  })
+
   it.each(['0', '-1', '1.5', 'abc', '42abc', '1e2', '9007199254740992'])(
     'rejects invalid topic ID %s before fetching alerts',
     async (topicId) => {

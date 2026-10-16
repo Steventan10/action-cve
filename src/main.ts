@@ -102,16 +102,16 @@ async function run(): Promise<void> {
       )
     }
     alerts = filterIgnoredAlerts(alerts, ignoreList)
+    if (telegramBotToken && telegramChatId) {
+      await sendAlertsToTelegram(
+        telegramBotToken,
+        telegramChatId,
+        alerts,
+        severity,
+        telegramTopicId,
+      )
+    }
     if (alerts.length > 0) {
-      if (telegramBotToken && telegramChatId) {
-        await sendAlertsToTelegram(
-          telegramBotToken,
-          telegramChatId,
-          alerts,
-          severity,
-          telegramTopicId,
-        )
-      }
       if (microsoftTeamsWebhookUrl) {
         await sendAlertsToMicrosoftTeams(microsoftTeamsWebhookUrl, alerts)
       }
